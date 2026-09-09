@@ -41,6 +41,12 @@ Environment files are optional and loaded only if present.
 - `update-official-addons.sh` reads `update-official-addons.env`
   - Optional var:
     - `PRIVATE_ADDON_URL`
+- `update-trusted-proxies.sh` reads `update-trusted-proxies.env`
+  - Optional vars:
+    - `CADDYFILE` (default: `/root/.hydro/Caddyfile`)
+    - `REGION` (default: `cn-hangzhou`)
+    - `SITE_ID` (default: `177345139939568`)
+    - `DEBUG` (`true` or `false`, default: `false`)
 
 `.gitignore` ignores `*.env`, so local environment files are not committed.
 
@@ -75,7 +81,10 @@ chmod +x *.sh
 - `update-trusted-proxies.sh` first requests an Alibaba Cloud ESA origin protection
   IP whitelist update, then requests the current whitelist and combines its IPv4
   and IPv6 entries. It defaults to region `cn-hangzhou` and site ID
-  `177345139939568`; set `REGION` or `SITE_ID` to override these values.
-- The default target is `/root/.hydro/Caddyfile`. Set `CADDYFILE` to a different
-  path when testing. Only `trusted_proxies static` directives inside `servers`
+  `177345139939568`.
+- With `DEBUG=true`, the script copies the configured Caddyfile to the same path
+  with `.debug` appended and updates only that copy. Otherwise it updates the
+  configured Caddyfile. Only `trusted_proxies static` directives inside `servers`
   blocks are updated; other addresses, directives, and comments are preserved.
+- After updating the target, the script runs `pm2 restart caddy`. If `pm2` is not
+  initially available, it loads `/root/.nix-profile/etc/profile.d/nix.sh`.
