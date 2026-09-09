@@ -88,4 +88,6 @@ chmod +x *.sh
   configured Caddyfile. Only `trusted_proxies static` directives inside `servers`
   blocks are updated; other addresses, directives, and comments are preserved.
 - After updating the target, the script runs `pm2 restart caddy`. If `pm2` is not
-  initially available, it loads `/root/.nix-profile/etc/profile.d/nix.sh`.
+  initially available, it loads `/root/.nix-profile/etc/profile.d/nix.sh`. The
+  script emits timestamped progress and IP-count logs suitable for cron; PM2
+  output is suppressed and only the restart result is logged.

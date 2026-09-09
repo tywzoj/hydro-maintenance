@@ -1,6 +1,11 @@
 #!/bin/bash
 
 set -euo pipefail
+trap 'echo "========== $(date "+%F %T") Trusted proxies update failed (exit code: $?) =========="' ERR
+
+log() {
+	echo "[$(date '+%F %T')] $*"
+}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/update-trusted-proxies.env"
@@ -53,10 +58,15 @@ if [[ "$DEBUG" == true ]]; then
 	cp -p -- "$CADDYFILE" "$TARGET_CADDYFILE"
 fi
 
+echo
+echo "========== $(date '+%F %T') Trusted proxies update started =========="
+
+log "Requesting Alibaba Cloud ESA IP whitelist update"
 aliyun esa update-origin-protection-ip-white-list \
 	--region "$REGION" \
 	--site-id "$SITE_ID" >/dev/null
 
+log "Retrieving current Alibaba Cloud ESA IP whitelist"
 WHITELIST_JSON="$(aliyun esa get-origin-protection \
 	--region "$REGION" \
 	--site-id "$SITE_ID")"
@@ -75,6 +85,9 @@ if [[ ! "$TRUSTED_PROXY_LIST" =~ ^[0-9A-Fa-f:./]+([[:space:]][0-9A-Fa-f:./]+)*$ 
 	echo "Aliyun ESA returned an unsafe IP whitelist" >&2
 	exit 1
 fi
+
+read -r -a TRUSTED_PROXIES <<< "$TRUSTED_PROXY_LIST"
+log "Retrieved ${#TRUSTED_PROXIES[@]} trusted proxy IP ranges"
 
 TEMP_FILE="$(mktemp "${TARGET_CADDYFILE}.tmp.XXXXXX")"
 trap 'rm -f -- "$TEMP_FILE"' EXIT
@@ -172,5 +185,14 @@ fi
 mv -- "$TEMP_FILE" "$TARGET_CADDYFILE"
 trap - EXIT
 
-echo "Updated trusted proxies in $TARGET_CADDYFILE"
-pm2 restart caddy
+log "Updated trusted proxies in $TARGET_CADDYFILE"
+
+if pm2 restart caddy >/dev/null 2>&1; then
+	log "Caddy restart succeeded"
+else
+	log "Caddy restart failed"
+	exit 1
+fi
+
+echo "========== $(date '+%F %T') Trusted proxies update finished =========="
+echo
