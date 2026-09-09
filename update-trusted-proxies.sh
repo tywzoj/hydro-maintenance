@@ -11,8 +11,12 @@ fi
 
 CADDYFILE="${CADDYFILE:-/root/.hydro/Caddyfile}"
 REGION="${REGION:-cn-hangzhou}"
-SITE_ID="${SITE_ID:-177345139939568}"
 DEBUG="${DEBUG:-false}"
+
+if [[ -z "${SITE_ID:-}" ]]; then
+	echo "Missing required variable: SITE_ID (set it in environment or $ENV_FILE)" >&2
+	exit 1
+fi
 
 case "$DEBUG" in
 	true)
