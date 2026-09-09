@@ -29,6 +29,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 		continue
 	fi
 
+	if [[ ! "$line" =~ ^[0-9A-Fa-f:./]+$ ]]; then
+		echo "Invalid trusted proxy address: $line" >&2
+		exit 1
+	fi
+
 	TRUSTED_PROXIES+=("$line")
 done < "$PROXY_FILE"
 
@@ -36,27 +41,6 @@ if (( ${#TRUSTED_PROXIES[@]} == 0 )); then
 	echo "Trusted proxy list is empty: $PROXY_FILE" >&2
 	exit 1
 fi
-
-if ! command -v python3 >/dev/null 2>&1; then
-	echo "python3 is required to validate trusted proxy addresses" >&2
-	exit 1
-fi
-
-python3 - "${TRUSTED_PROXIES[@]}" <<'PY'
-import ipaddress
-import re
-import sys
-
-for value in sys.argv[1:]:
-    if not re.fullmatch(r"[0-9A-Fa-f:.]+", value):
-        print(f"Invalid IP address: {value}", file=sys.stderr)
-        raise SystemExit(1)
-    try:
-        ipaddress.ip_address(value)
-    except ValueError:
-        print(f"Invalid IP address: {value}", file=sys.stderr)
-        raise SystemExit(1)
-PY
 
 printf -v TRUSTED_PROXY_LIST '%s ' "${TRUSTED_PROXIES[@]}"
 TRUSTED_PROXY_LIST="${TRUSTED_PROXY_LIST% }"
