@@ -20,6 +20,9 @@ Utility scripts for HydroOJ maintenance tasks.
   - `aria2c` (for `download-geoip-aria.sh`)
 - For backup script:
   - `restic`
+- For trusted proxy updates:
+  - Alibaba Cloud CLI (`aliyun`), configured with credentials for ESA
+  - `jq`
 
 Some scripts attempt to load `/root/.nix-profile/etc/profile.d/nix.sh` when required commands are missing in PATH.
 
@@ -69,11 +72,10 @@ chmod +x *.sh
 - `update-official-addons.sh` always installs public addon:
   - `https://hydro.ac/hydroac-client.zip`
 - Private addon is installed only when `PRIVATE_ADDON_URL` is set.
-- `update-trusted-proxies.sh` reads `trusted_proxies.txt` from the script directory,
-  regardless of the current working directory. The file accepts one IPv4, IPv6,
-  or CIDR address per line, blank lines, whole-line `#` comments, CRLF line
-  endings, and a final line without a newline. Address and CIDR syntax is not
-  validated; inline comments and characters outside IP/CIDR notation are rejected.
+- `update-trusted-proxies.sh` first requests an Alibaba Cloud ESA origin protection
+  IP whitelist update, then requests the current whitelist and combines its IPv4
+  and IPv6 entries. It defaults to region `cn-hangzhou` and site ID
+  `177345139939568`; set `REGION` or `SITE_ID` to override these values.
 - The default target is `/root/.hydro/Caddyfile`. Set `CADDYFILE` to a different
   path when testing. Only `trusted_proxies static` directives inside `servers`
   blocks are updated; other addresses, directives, and comments are preserved.

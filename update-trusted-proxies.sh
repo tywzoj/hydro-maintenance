@@ -1,49 +1,47 @@
 #!/bin/bash
 
 CADDYFILE="${CADDYFILE:-/root/.hydro/Caddyfile}"
+REGION="${REGION:-cn-hangzhou}"
+SITE_ID="${SITE_ID:-177345139939568}"
 
 ###################### CONFIGURATION END ######################
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROXY_FILE="$SCRIPT_DIR/trusted_proxies.txt"
-
-if [[ ! -r "$PROXY_FILE" ]]; then
-	echo "Cannot read trusted proxy list: $PROXY_FILE" >&2
-	exit 1
-fi
+for command in aliyun jq awk mktemp cp mv; do
+	if ! command -v "$command" >/dev/null 2>&1; then
+		echo "Required command not found: $command" >&2
+		exit 1
+	fi
+done
 
 if [[ ! -f "$CADDYFILE" ]]; then
 	echo "Caddyfile not found: $CADDYFILE" >&2
 	exit 1
 fi
 
-TRUSTED_PROXIES=()
-while IFS= read -r line || [[ -n "$line" ]]; do
-	line="${line%$'\r'}"
-	line="${line#"${line%%[![:space:]]*}"}"
-	line="${line%"${line##*[![:space:]]}"}"
+aliyun esa update-origin-protection-ip-white-list \
+	--region "$REGION" \
+	--site-id "$SITE_ID" >/dev/null
 
-	if [[ -z "$line" || "$line" == \#* ]]; then
-		continue
-	fi
+WHITELIST_JSON="$(aliyun esa update-origin-protection-ip-white-list \
+	--region "$REGION" \
+	--site-id "$SITE_ID")"
 
-	if [[ ! "$line" =~ ^[0-9A-Fa-f:./]+$ ]]; then
-		echo "Invalid trusted proxy address: $line" >&2
-		exit 1
-	fi
-
-	TRUSTED_PROXIES+=("$line")
-done < "$PROXY_FILE"
-
-if (( ${#TRUSTED_PROXIES[@]} == 0 )); then
-	echo "Trusted proxy list is empty: $PROXY_FILE" >&2
+if ! TRUSTED_PROXY_LIST="$(jq -er '
+	.CurrentIPWhitelist
+	| ((.IPv4 // []) + (.IPv6 // []))
+	| select(length > 0 and all(.[]; type == "string"))
+	| join(" ")
+' <<< "$WHITELIST_JSON")"; then
+	echo "Aliyun ESA returned an invalid or empty IP whitelist" >&2
 	exit 1
 fi
 
-printf -v TRUSTED_PROXY_LIST '%s ' "${TRUSTED_PROXIES[@]}"
-TRUSTED_PROXY_LIST="${TRUSTED_PROXY_LIST% }"
+if [[ ! "$TRUSTED_PROXY_LIST" =~ ^[0-9A-Fa-f:./]+([[:space:]][0-9A-Fa-f:./]+)*$ ]]; then
+	echo "Aliyun ESA returned an unsafe IP whitelist" >&2
+	exit 1
+fi
 
 TEMP_FILE="$(mktemp "${CADDYFILE}.tmp.XXXXXX")"
 trap 'rm -f -- "$TEMP_FILE"' EXIT
