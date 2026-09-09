@@ -57,7 +57,7 @@ aliyun esa update-origin-protection-ip-white-list \
 	--region "$REGION" \
 	--site-id "$SITE_ID" >/dev/null
 
-WHITELIST_JSON="$(aliyun esa update-origin-protection-ip-white-list \
+WHITELIST_JSON="$(aliyun esa get-origin-protection \
 	--region "$REGION" \
 	--site-id "$SITE_ID")"
 
