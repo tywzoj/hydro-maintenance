@@ -8,6 +8,7 @@ Utility scripts for HydroOJ maintenance tasks.
 - `download-geoip-aria.sh`: Download and install GeoLite2 City database with `aria2c` (resume and parallel download support).
 - `hydro-restic-backup.sh`: Run HydroOJ backup to a Restic repository.
 - `update-official-addons.sh`: Install official public addon and optional private addon.
+- `update-trusted-proxies.sh`: Update `trusted_proxies static` address lists in the Hydro Caddyfile.
 
 ## Requirements
 
@@ -19,6 +20,8 @@ Utility scripts for HydroOJ maintenance tasks.
   - `aria2c` (for `download-geoip-aria.sh`)
 - For backup script:
   - `restic`
+- For trusted proxy updates:
+  - Python 3 (used only for standard-library IP address validation)
 
 Some scripts attempt to load `/root/.nix-profile/etc/profile.d/nix.sh` when required commands are missing in PATH.
 
@@ -49,6 +52,7 @@ bash download-geoip.sh
 bash download-geoip-aria.sh
 bash hydro-restic-backup.sh
 bash update-official-addons.sh
+bash update-trusted-proxies.sh
 ```
 
 Or make them executable:
@@ -59,6 +63,7 @@ chmod +x *.sh
 ./download-geoip-aria.sh
 ./hydro-restic-backup.sh
 ./update-official-addons.sh
+./update-trusted-proxies.sh
 ```
 
 ## Notes
@@ -66,3 +71,10 @@ chmod +x *.sh
 - `update-official-addons.sh` always installs public addon:
   - `https://hydro.ac/hydroac-client.zip`
 - Private addon is installed only when `PRIVATE_ADDON_URL` is set.
+- `update-trusted-proxies.sh` reads `trusted_proxies.txt` from the script directory,
+  regardless of the current working directory. The file accepts one IPv4 or IPv6
+  address per line, blank lines, whole-line `#` comments, CRLF line endings, and
+  a final line without a newline. CIDR ranges and inline comments are not accepted.
+- The default target is `/root/.hydro/Caddyfile`. Set `CADDYFILE` to a different
+  path when testing. Only `trusted_proxies static` directives inside `servers`
+  blocks are updated; other addresses, directives, and comments are preserved.
