@@ -8,6 +8,7 @@ Utility scripts for HydroOJ maintenance tasks.
 - `download-geoip-aria.sh`: Download and install GeoLite2 City database with `aria2c` (resume and parallel download support).
 - `hydro-restic-backup.sh`: Run HydroOJ backup to a Restic repository.
 - `update-official-addons.sh`: Install official public addon and optional private addon.
+- `update-trusted-proxies.sh`: Update `trusted_proxies static` address lists in the Hydro Caddyfile.
 
 ## Requirements
 
@@ -19,6 +20,9 @@ Utility scripts for HydroOJ maintenance tasks.
   - `aria2c` (for `download-geoip-aria.sh`)
 - For backup script:
   - `restic`
+- For trusted proxy updates:
+  - Alibaba Cloud CLI (`aliyun`), configured with credentials for ESA
+  - `jq`
 
 Some scripts attempt to load `/root/.nix-profile/etc/profile.d/nix.sh` when required commands are missing in PATH.
 
@@ -37,6 +41,13 @@ Environment files are optional and loaded only if present.
 - `update-official-addons.sh` reads `update-official-addons.env`
   - Optional var:
     - `PRIVATE_ADDON_URL`
+- `update-trusted-proxies.sh` reads `update-trusted-proxies.env`
+  - Required var:
+    - `SITE_ID`
+  - Optional vars:
+    - `CADDYFILE` (default: `/root/.hydro/Caddyfile`)
+    - `REGION` (default: `cn-hangzhou`)
+    - `DEBUG` (`true` or `false`, default: `false`)
 
 `.gitignore` ignores `*.env`, so local environment files are not committed.
 
@@ -49,6 +60,7 @@ bash download-geoip.sh
 bash download-geoip-aria.sh
 bash hydro-restic-backup.sh
 bash update-official-addons.sh
+bash update-trusted-proxies.sh
 ```
 
 Or make them executable:
@@ -59,6 +71,7 @@ chmod +x *.sh
 ./download-geoip-aria.sh
 ./hydro-restic-backup.sh
 ./update-official-addons.sh
+./update-trusted-proxies.sh
 ```
 
 ## Notes
@@ -66,3 +79,15 @@ chmod +x *.sh
 - `update-official-addons.sh` always installs public addon:
   - `https://hydro.ac/hydroac-client.zip`
 - Private addon is installed only when `PRIVATE_ADDON_URL` is set.
+- `update-trusted-proxies.sh` first requests an Alibaba Cloud ESA origin protection
+  IP whitelist update, then requests the current whitelist and combines its IPv4
+  and IPv6 entries. It defaults to region `cn-hangzhou`; `SITE_ID` must be set in
+  the environment or `update-trusted-proxies.env`.
+- With `DEBUG=true`, the script copies the configured Caddyfile to the same path
+  with `.debug` appended and updates only that copy. Otherwise it updates the
+  configured Caddyfile. Only `trusted_proxies static` directives inside `servers`
+  blocks are updated; other addresses, directives, and comments are preserved.
+- After updating the target, the script runs `pm2 restart caddy`. If `pm2` is not
+  initially available, it loads `/root/.nix-profile/etc/profile.d/nix.sh`. The
+  script emits timestamped progress and IP-count logs suitable for cron; PM2
+  output is suppressed and only the restart result is logged.
